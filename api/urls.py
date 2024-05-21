@@ -4,8 +4,10 @@ from . import views
 
 urlpatterns = [
     path('notes/', views.get_notes),
-    path('users/', views.get_users),
     path('notes/new/', views.create_note),
-    path('users/new/', views.create_user),
+    path('notes/<uuid:id>/', views.note_detail),
 
+    path('users/', views.get_users),
+    path('users/new/', views.create_user),
+    path('users/<int:id>/', views.user_detail),
 ]

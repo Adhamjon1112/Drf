@@ -5,7 +5,7 @@ from app_main.models import Note
 
 User = get_user_model()
 
-class NotesSerializer(serializers.ModelSerializer):
+class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
         fields = ['id', 'owner', 'title', 'body', 'created', 'updated']
