@@ -1,12 +1,9 @@
 from django.urls import path
+from rest_framework.routers import DefaultRouter
+from .views import UserViewSet, NoteViewSet
 
-from . import views
+router = DefaultRouter()
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'notes', NoteViewSet, basename='note')
 
-
-urlpatterns = [
-    path('notes/', views.notes),                        # localhost:8000/api/notes/
-    path('notes/<uuid:id>/', views.note),               # localhost:8000/api/notes/edit/:id
-
-    path('users/', views.users),                        # localhost:8000/api/users/
-    path('users/<int:id>/', views.user),                # localhost:8000/api/users/1
-]
+urlpatterns = router.urls
