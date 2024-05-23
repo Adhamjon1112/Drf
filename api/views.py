@@ -3,24 +3,16 @@ import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from app_main.models import Note
 from .serializers import NoteSerializer, UserSerializer
 
+User = get_user_model()
 
 
-
-
-@api_view(['GET'])
-def get_notes(request):
-    notes = Note.objects.all()
-    serialized_data = NoteSerializer(instance=notes, many=True)
-    return Response(data=serialized_data.data)
-
-
-@api_view(['POST'])
-def create_note(request):
+@api_view(['GET', 'POST'])
+def notes(request):
     if request.method == 'POST':
         owner_id = request.data.get('owner')
         title = request.data.get('title')
@@ -41,100 +33,129 @@ def create_note(request):
         note = Note.objects.create(owner=user, title=title, body=body)
         note.save()
         return Response(data="Created", status=status.HTTP_201_CREATED)
-
-    return Response()
-
-
-@api_view(['GET'])
-def get_users(request):
-    users = User.objects.all()
-    serialized_data = UserSerializer(users, many=True)
+    notes = Note.objects.all()  # QuerySet[<Note object>, ...]
+    serialized_data = NoteSerializer(instance=notes, many=True)
     return Response(data=serialized_data.data)
 
-@api_view(['POST'])
-def create_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email')
-    first_name = request.data.get('first_name')
-    last_name = request.data.get('last_name')
 
-    if not username or not password:
-        return Response(data="The user must have at least a username and password", status=status.HTTP_400_BAD_REQUEST)
+@api_view(['GET', 'POST'])
+def users(request):
+    if request.method == 'POST':
+        username = request.data.get('username')
+        email = request.data.get('email')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        password = request.data.get('password')
 
-    user = User.objects.create_user(username=username, password=password, email=email or '', first_name=first_name or '', last_name=last_name or '')
-    user.save()
-    return Response(data="User Created", status=status.HTTP_201_CREATED)
+        if username and password:
+            user = User.objects.create(
+                username=username,
+            )
+            user.set_password(password)
+
+            if first_name:
+                user.first_name = first_name
+
+            if last_name:
+                user.last_name = last_name
+
+            if email:
+                user.email = email
+
+            user.save()
+            user = UserSerializer(instance=user, many=False).data
+            return Response(data=user)
+        else:
+            return Response(data={"detail": "Username and Password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    users = User.objects.all()
+    serialized_data = UserSerializer(
+        instance=users, many=True)
+    return Response(data=serialized_data.data)
 
 
-
-@api_view(['PATCH', 'GET', 'DELETE'])
-def note_detail(request, id):
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def note(request, id):
     try:
         note = Note.objects.get(id=id)
     except:
         note = None
-    
+
     if not note:
-        return Response(data={"detail": "No such note wrih this ID"})
+        return Response(data={"detail": "No such note with this ID"})
 
     if request.method == 'GET':
         note = NoteSerializer(instance=note, many=False).data
         return Response(data=note)
-    
+
+    elif request.method == 'PUT':
+        ...
+
     elif request.method == 'PATCH':
         title = request.data.get('title') or None
         body = request.data.get('body') or None
 
         if title:
             note.title = title
-        
+
         if body:
             note.body = body
 
         note.save()
         note = NoteSerializer(instance=note, many=False).data
+
         return Response(data=note)
-    
+
     elif request.method == 'DELETE':
         note.delete()
         return Response(data='Deleted', status=status.HTTP_204_NO_CONTENT)
-    
 
-@api_view(['GET', 'PATCH', 'DELETE'])
-def user_detail(request, id):
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def user(request, id):
     try:
         user = User.objects.get(id=id)
     except:
         user = None
-    
+
     if not user:
-        return Response(data={"detail": "No such note wrih this ID"})
+        return Response(data={"detail": "No such user with this ID"})
 
     if request.method == 'GET':
         user = UserSerializer(instance=user, many=False).data
         return Response(data=user)
 
+    elif request.method == 'PUT':
+        ...
+
     elif request.method == 'PATCH':
         username = request.data.get('username')
-        email = request.data.get('email') or None
-        first_name = request.data.get('first_name') or None
-        last_name = request.data.get('last_name') or None
+        email = request.data.get('email')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
         password = request.data.get('password')
 
-        if username:
+        if username.strip() and len(User.objects.filter(username=username)) == 0:
             user.username = username
+        else:
+            return Response(data={"detail": "User with this username already exists"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         if email:
             user.email = email
+
         if first_name:
             user.first_name = first_name
+
         if last_name:
             user.last_name = last_name
-        if password:
+
+        if password.strip():
             user.set_password(password)
 
         user.save()
         user = UserSerializer(instance=user, many=False).data
+
         return Response(data=user)
 
     elif request.method == 'DELETE':
